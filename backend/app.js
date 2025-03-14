@@ -7,6 +7,9 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth.routes');
 const gameRoutes = require('./routes/game.routes');
 const rewardRoutes = require('./routes/reward.routes');
+const gameProgressRoutes = require('./routes/gameProgress.routes');
+const userRoutes = require('./routes/user.routes');
+const leaderboardRoutes = require('./routes/leaderboard.routes');
 
 const app = express();
 
@@ -20,6 +23,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/progress', gameProgressRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // Basic route for testing
 app.get('/api/health', (req, res) => {
