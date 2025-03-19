@@ -1,3 +1,4 @@
+// backend/controllers/gameProgress.controller.js
 const GameProgress = require('../models/gameProgress.model');
 const Game = require('../models/game.model');
 

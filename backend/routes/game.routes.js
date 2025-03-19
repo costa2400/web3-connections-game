@@ -1,3 +1,4 @@
+// backend/routes/game.routes.js
 const express = require('express');
 const router = express.Router();
 const gameController = require('../controllers/game.controller');
@@ -8,10 +9,7 @@ router.get('/new', gameController.getNewGame);
 // Submit a guess
 router.post('/guess', gameController.submitGuess);
 
-// Get player progress
-router.get('/progress', gameController.getPlayerProgress);
-
-// Get game stats (for development/testing)
+// Get game stats
 router.get('/stats', gameController.getGameStats);
 
 module.exports = router;

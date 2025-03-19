@@ -1,3 +1,4 @@
+// backend/models/gameProgress.model.js
 const mongoose = require('mongoose');
 
 const gameProgressSchema = new mongoose.Schema({

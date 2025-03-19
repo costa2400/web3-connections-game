@@ -1,3 +1,4 @@
+// backend/controllers/game.controller.js
 const Game = require('../models/game.model');
 const GameProgress = require('../models/gameProgress.model');
 
@@ -135,36 +136,17 @@ exports.submitGuess = async (req, res) => {
   }
 };
 
-// Get player progress
-exports.getPlayerProgress = async (req, res) => {
+// Get game stats
+exports.getGameStats = async (req, res) => {
   try {
-    const playerIdentifier = req.headers['x-player-id'] || 'anonymous';
+    const gameCount = await Game.countDocuments();
     
-    // Get all progress for this player
-    const progress = await GameProgress.find({ playerIdentifier })
-      .sort({ createdAt: -1 })
-      .limit(10);
-    
-    // Calculate stats
-    const completedGames = await GameProgress.countDocuments({ 
-      playerIdentifier, 
-      isCompleted: true 
+    res.status(200).json({
+      gameCount,
+      message: 'Game stats retrieved successfully'
     });
-    
-    const totalPoints = await GameProgress.aggregate([
-      { $match: { playerIdentifier } },
-      { $group: { _id: null, total: { $sum: '$points' } } }
-    ]);
-    
-    const stats = {
-      completedGames,
-      totalPoints: totalPoints.length > 0 ? totalPoints[0].total : 0,
-      recentGames: progress
-    };
-    
-    res.status(200).json({ stats });
   } catch (error) {
-    console.error('Get player progress error:', error);
-    res.status(500).json({ message: 'Server error while retrieving progress' });
+    console.error('Get game stats error:', error);
+    res.status(500).json({ message: 'Server error while retrieving game stats' });
   }
 };
