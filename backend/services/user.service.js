@@ -31,11 +31,31 @@ const calculateLevelFromXP = (xp) => {
 // Award XP to a user
 const awardXP = async (userId, amount) => {
   try {
-    // For now, just return a mock response
-    // In production, this would update user XP and check for level ups
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Update user's XP
+    user.xp += amount;
+    
+    // Calculate new level info
+    const levelInfo = calculateLevelFromXP(user.xp);
+    
+    // Check if leveled up
+    const leveledUp = levelInfo.level > user.level;
+    if (leveledUp) {
+      user.level = levelInfo.level;
+    }
+    
+    // Save the updated user
+    await user.save();
+    
     return {
       xpAwarded: amount,
-      leveledUp: false
+      leveledUp,
+      newXP: user.xp,
+      newLevel: user.level
     };
   } catch (error) {
     console.error('Award XP error:', error);
