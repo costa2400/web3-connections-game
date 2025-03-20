@@ -1,26 +1,42 @@
-// backend/middleware/auth.middleware.js
-const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
-module.exports = (req, res, next) => {
-  try {
-    // Get token from header
-    const token = req.header('x-auth-token');
-
-    // Check if no token
-    if (!token) {
-      return res.status(401).json({ message: 'No token, authorization denied' });
-    }
-
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Add user ID from payload to request
-    req.userId = decoded.id;
-    req.walletAddress = decoded.walletAddress;
-    
-    next();
-  } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(401).json({ message: 'Token is not valid' });
+const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: false,
+    unique: true,
+    sparse: true,
+    trim: true,
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: false
+  },
+  walletAddress: {
+    type: String,
+    required: false,
+    unique: true,
+    sparse: true
+  },
+  authType: {
+    type: String,
+    enum: ['email', 'wallet'],
+    default: 'email'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastLoginAt: {
+    type: Date
   }
-};
+});
+
+module.exports = mongoose.model('User', userSchema);

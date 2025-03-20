@@ -20,7 +20,9 @@ const gameProgressSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  timeCompleted: Date,
+  timeCompleted: {
+    type: Date
+  },
   points: {
     type: Number,
     default: 0
@@ -50,3 +52,8 @@ const gameProgressSchema = new mongoose.Schema({
     default: 0
   }
 }, { timestamps: true });
+
+// Create a compound index for player and game
+gameProgressSchema.index({ playerIdentifier: 1, gameId: 1 }, { unique: true });
+
+module.exports = mongoose.model('GameProgress', gameProgressSchema);
