@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChakraProvider, Box, VStack, Heading, Text, Container, useColorModeValue } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
+import Game from './components/Game';
 
 const MotionBox = motion(Box);
 
@@ -51,7 +52,7 @@ const App = () => {
               Connect the dots in the Cosmos ecosystem
             </Text>
 
-            {/* Game content will go here */}
+            {/* Game component */}
             <Box
               w="full"
               maxW="800px"
@@ -62,9 +63,7 @@ const App = () => {
               border="1px solid"
               borderColor="whiteAlpha.200"
             >
-              <Text textAlign="center" color="gray.300">
-                Game content coming soon...
-              </Text>
+              <Game />
             </Box>
           </VStack>
         </Container>
