@@ -1,12 +1,14 @@
 // backend/controllers/game.controller.js
 const Game = require('../models/game.model');
 const GameProgress = require('../models/gameProgress.model');
+const User = require('../models/user.model');
+const userService = require('../services/user.service');
 
 // Get a new game
 exports.getNewGame = async (req, res) => {
   try {
-    // For now, we'll use a simple identifier (later this will be the user's wallet)
-    const playerIdentifier = req.headers['x-player-id'] || 'anonymous';
+    // Use user ID if authenticated, otherwise use header or 'anonymous'
+    const playerIdentifier = req.userId || req.headers['x-player-id'] || 'anonymous';
     
     // Create a new game
     const newGame = await Game.createNewGame();
@@ -36,7 +38,7 @@ exports.getNewGame = async (req, res) => {
 exports.submitGuess = async (req, res) => {
   try {
     const { gameId, selectedWords } = req.body;
-    const playerIdentifier = req.headers['x-player-id'] || 'anonymous';
+    const playerIdentifier = req.userId || req.headers['x-player-id'] || 'anonymous';
     
     if (!gameId || !selectedWords || !Array.isArray(selectedWords) || selectedWords.length !== 4) {
       return res.status(400).json({ message: 'Valid game ID and exactly 4 selected words are required' });
@@ -86,6 +88,10 @@ exports.submitGuess = async (req, res) => {
       }
     }
     
+    // Initialize rewards info
+    let xpAwarded = 0;
+    let levelUp = false;
+    
     if (correct) {
       // Calculate points based on streak
       const basePoints = 100;
@@ -97,6 +103,22 @@ exports.submitGuess = async (req, res) => {
       progress.streak += 1;
       progress.solvedGroups.push(groupIndex);
       
+      // Update user XP and points if authenticated
+      if (req.userId) {
+        try {
+          // Award XP for correct guesses
+          const xpResult = await userService.awardXP(req.userId, 10);
+          xpAwarded = 10;
+          levelUp = xpResult.leveledUp;
+          
+          // Award points to user
+          await userService.awardPoints(req.userId, earnedPoints);
+        } catch (userError) {
+          console.error('User update error:', userError);
+          // Continue with the game even if user update fails
+        }
+      }
+      
       // Check if all groups are solved
       if (progress.solvedGroups.length === game.groups.length) {
         progress.isCompleted = true;
@@ -105,6 +127,25 @@ exports.submitGuess = async (req, res) => {
         // Award completion bonus
         const completionBonus = 200;
         progress.points += completionBonus;
+        
+        // Award completion XP and check achievements if authenticated
+        if (req.userId) {
+          try {
+            // Award XP for game completion
+            const xpResult = await userService.awardXP(req.userId, 50);
+            xpAwarded += 50;
+            levelUp = levelUp || xpResult.leveledUp;
+            
+            // Award bonus points to user
+            await userService.awardPoints(req.userId, completionBonus);
+            
+            // Check for new achievements
+            await userService.checkAchievements(req.userId);
+          } catch (userError) {
+            console.error('User completion update error:', userError);
+            // Continue with the game even if user update fails
+          }
+        }
       }
       
       await progress.save();
@@ -118,7 +159,9 @@ exports.submitGuess = async (req, res) => {
         totalPoints: progress.points,
         streak: progress.streak,
         solvedGroups: progress.solvedGroups,
-        isCompleted: progress.isCompleted
+        isCompleted: progress.isCompleted,
+        xpAwarded,
+        levelUp
       });
     } else {
       // Incorrect guess
@@ -141,12 +184,105 @@ exports.getGameStats = async (req, res) => {
   try {
     const gameCount = await Game.countDocuments();
     
-    res.status(200).json({
-      gameCount,
-      message: 'Game stats retrieved successfully'
-    });
+    // Get more detailed stats if user is authenticated
+    if (req.userId) {
+      const userCompletedGames = await GameProgress.countDocuments({
+        playerIdentifier: req.userId,
+        isCompleted: true
+      });
+      
+      const userTotalGames = await GameProgress.countDocuments({
+        playerIdentifier: req.userId
+      });
+      
+      // Calculate completion rate
+      const completionRate = userTotalGames > 0 
+        ? Math.round((userCompletedGames / userTotalGames) * 100) 
+        : 0;
+      
+      res.status(200).json({
+        gameCount,
+        userStats: {
+          totalGames: userTotalGames,
+          completedGames: userCompletedGames,
+          completionRate
+        },
+        message: 'Game stats retrieved successfully'
+      });
+    } else {
+      // Basic stats for non-authenticated users
+      res.status(200).json({
+        gameCount,
+        message: 'Game stats retrieved successfully'
+      });
+    }
   } catch (error) {
     console.error('Get game stats error:', error);
     res.status(500).json({ message: 'Server error while retrieving game stats' });
+  }
+};
+
+// Get daily challenge
+exports.getDailyChallenge = async (req, res) => {
+  try {
+    // Use today's date to get or create a daily challenge
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if a daily challenge already exists for today
+    let dailyChallenge = await Game.findOne({
+      isDaily: true,
+      dailyDate: {
+        $gte: today,
+        $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+      }
+    });
+    
+    // If no daily challenge exists, create one
+    if (!dailyChallenge) {
+      // Create a new game with the daily flag
+      dailyChallenge = await Game.createNewGame();
+      dailyChallenge.isDaily = true;
+      dailyChallenge.dailyDate = today;
+      await dailyChallenge.save();
+    }
+    
+    // Use user ID if authenticated, otherwise use header or 'anonymous'
+    const playerIdentifier = req.userId || req.headers['x-player-id'] || 'anonymous';
+    
+    // Check if the player has already started this daily challenge
+    let progress = await GameProgress.findOne({
+      playerIdentifier,
+      gameId: dailyChallenge._id
+    });
+    
+    // If not, create progress entry
+    if (!progress) {
+      progress = await GameProgress.create({
+        playerIdentifier,
+        gameId: dailyChallenge._id,
+        isDaily: true
+      });
+    }
+    
+    res.status(200).json({
+      message: 'Daily challenge retrieved successfully',
+      game: {
+        id: dailyChallenge._id,
+        groups: dailyChallenge.groups,
+        groupNames: dailyChallenge.groupNames,
+        groupColors: dailyChallenge.groupColors,
+        isDaily: true,
+        date: dailyChallenge.dailyDate
+      },
+      progress: {
+        solvedGroups: progress.solvedGroups,
+        attempts: progress.attempts,
+        isCompleted: progress.isCompleted
+      }
+    });
+  } catch (error) {
+    console.error('Get daily challenge error:', error);
+    res.status(500).json({ message: 'Server error while retrieving daily challenge' });
   }
 };

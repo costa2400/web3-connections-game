@@ -2,14 +2,20 @@
 const express = require('express');
 const router = express.Router();
 const gameController = require('../controllers/game.controller');
+const authMiddleware = require('../middleware/auth.middleware');
+const optionalAuth = require('../middleware/optionalAuth.middleware');
 
+// Public routes (authentication optional)
 // Get a new game
-router.get('/new', gameController.getNewGame);
+router.get('/new', optionalAuth, gameController.getNewGame);
 
 // Submit a guess
-router.post('/guess', gameController.submitGuess);
+router.post('/guess', optionalAuth, gameController.submitGuess);
 
-// Get game stats
-router.get('/stats', gameController.getGameStats);
+// Get game stats (more detailed if authenticated)
+router.get('/stats', optionalAuth, gameController.getGameStats);
+
+// Get daily challenge
+router.get('/daily', optionalAuth, gameController.getDailyChallenge);
 
 module.exports = router;

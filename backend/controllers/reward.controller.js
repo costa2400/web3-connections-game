@@ -1,4 +1,7 @@
 const Reward = require('../models/reward.model');
+const User = require('../models/user.model');
+const { mintReward } = require('../services/cosmos.service');
+const authMiddleware = require('../middleware/auth.middleware');
 
 // Get all rewards
 exports.getAllRewards = async (req, res) => {
@@ -86,6 +89,28 @@ exports.createInitialRewards = async (req, res) => {
         icon: '✨',
         levelRequired: 2,
         type: 'consumable'
+      },
+      {
+        id: 'nft_beginner',
+        name: 'Beginner Trophy',
+        description: 'NFT reward for completing 10 games',
+        cost: 0, // Achievement reward, not purchasable
+        icon: '🏆',
+        levelRequired: 1,
+        type: 'nft',
+        blockchain: {
+          isOnChain: true,
+          contractAddress: process.env.NFT_CONTRACT_ADDRESS
+        }
+      },
+      {
+        id: 'token_reward',
+        name: 'COSMOS Token Reward',
+        description: 'Earn COSMOS tokens for your achievements',
+        cost: 0, // Achievement reward, not purchasable
+        icon: '💰',
+        levelRequired: 5,
+        type: 'token'
       }
     ];
     
@@ -99,5 +124,170 @@ exports.createInitialRewards = async (req, res) => {
   } catch (error) {
     console.error('Create initial rewards error:', error);
     res.status(500).json({ message: 'Server error while creating rewards' });
+  }
+};
+
+// Purchase a reward with in-game points
+exports.purchaseReward = async (req, res) => {
+  try {
+    const { rewardId } = req.body;
+    const userId = req.userId; // From auth middleware
+    
+    // Find the reward
+    const reward = await Reward.findOne({ id: rewardId, isActive: true });
+    if (!reward) {
+      return res.status(404).json({ message: 'Reward not found' });
+    }
+    
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Check if user has enough points
+    if (user.totalPoints < reward.cost) {
+      return res.status(400).json({ message: 'Insufficient points' });
+    }
+    
+    // Check if user meets level requirement
+    if (user.level < reward.levelRequired) {
+      return res.status(400).json({ message: 'Level requirement not met' });
+    }
+    
+    // Deduct points
+    user.totalPoints -= reward.cost;
+    
+    // Add item to inventory
+    const existingItem = user.inventory.find(item => item.itemId === reward.id);
+    
+    if (existingItem) {
+      // Increment quantity for existing item
+      existingItem.quantity += 1;
+    } else {
+      // Add new item to inventory
+      user.inventory.push({
+        itemId: reward.id,
+        name: reward.name,
+        quantity: 1,
+        icon: reward.icon,
+        description: reward.description
+      });
+    }
+    
+    // If it's an on-chain reward (NFT or token), process it
+    if (reward.blockchain && reward.blockchain.isOnChain && user.walletAddress) {
+      // Process blockchain reward
+      try {
+        const blockchainResult = await mintReward(user.walletAddress, reward.id);
+        
+        // Save blockchain transaction details
+        if (blockchainResult && blockchainResult.success) {
+          // Add metadata to the inventory item
+          const inventoryItem = user.inventory.find(item => item.itemId === reward.id);
+          if (inventoryItem) {
+            inventoryItem.txHash = blockchainResult.txHash;
+            inventoryItem.tokenId = blockchainResult.nftId;
+          }
+        }
+      } catch (blockchainError) {
+        console.error('Blockchain reward processing error:', blockchainError);
+        // Continue with the purchase even if blockchain process fails
+        // We can implement a retry mechanism later
+      }
+    }
+    
+    await user.save();
+    
+    res.status(200).json({
+      message: 'Reward purchased successfully',
+      reward: {
+        id: reward.id,
+        name: reward.name,
+        type: reward.type
+      },
+      remainingPoints: user.totalPoints
+    });
+  } catch (error) {
+    console.error('Purchase reward error:', error);
+    res.status(500).json({ message: 'Server error while purchasing reward' });
+  }
+};
+
+// Claim a free reward (e.g., from achievements)
+exports.claimReward = async (req, res) => {
+  try {
+    const { rewardId } = req.params;
+    const userId = req.userId; // From auth middleware
+    
+    // Find the reward
+    const reward = await Reward.findOne({ id: rewardId, isActive: true, cost: 0 });
+    if (!reward) {
+      return res.status(404).json({ message: 'Free reward not found' });
+    }
+    
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Check if user meets level requirement
+    if (user.level < reward.levelRequired) {
+      return res.status(400).json({ message: 'Level requirement not met' });
+    }
+    
+    // Add item to inventory
+    const existingItem = user.inventory.find(item => item.itemId === reward.id);
+    
+    if (existingItem) {
+      // Increment quantity for existing item
+      existingItem.quantity += 1;
+    } else {
+      // Add new item to inventory
+      user.inventory.push({
+        itemId: reward.id,
+        name: reward.name,
+        quantity: 1,
+        icon: reward.icon,
+        description: reward.description
+      });
+    }
+    
+    // If it's an on-chain reward (NFT or token), process it
+    if (reward.blockchain && reward.blockchain.isOnChain && user.walletAddress) {
+      // Process blockchain reward
+      try {
+        const blockchainResult = await mintReward(user.walletAddress, reward.id);
+        
+        // Save blockchain transaction details
+        if (blockchainResult && blockchainResult.success) {
+          // Add metadata to the inventory item
+          const inventoryItem = user.inventory.find(item => item.itemId === reward.id);
+          if (inventoryItem) {
+            inventoryItem.txHash = blockchainResult.txHash;
+            inventoryItem.tokenId = blockchainResult.nftId;
+          }
+        }
+      } catch (blockchainError) {
+        console.error('Blockchain reward processing error:', blockchainError);
+        // Continue with the claim even if blockchain process fails
+        // We can implement a retry mechanism later
+      }
+    }
+    
+    await user.save();
+    
+    res.status(200).json({
+      message: 'Reward claimed successfully',
+      reward: {
+        id: reward.id,
+        name: reward.name,
+        type: reward.type
+      }
+    });
+  } catch (error) {
+    console.error('Claim reward error:', error);
+    res.status(500).json({ message: 'Server error while claiming reward' });
   }
 };

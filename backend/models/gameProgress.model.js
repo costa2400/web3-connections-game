@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 
 const gameProgressSchema = new mongoose.Schema({
-  // For now, we'll use a simpler model without user authentication
+  // Can be either a user ID or a simple identifier like 'anonymous'
   playerIdentifier: {
     type: String,
     required: true
@@ -36,12 +36,17 @@ const gameProgressSchema = new mongoose.Schema({
   isCompleted: {
     type: Boolean,
     default: false
+  },
+  isDaily: {
+    type: Boolean,
+    default: false
+  },
+  doublePointsActive: {
+    type: Boolean,
+    default: false
+  },
+  hintsUsed: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
-
-// Index for fast lookups
-gameProgressSchema.index({ playerIdentifier: 1, gameId: 1 }, { unique: true });
-
-const GameProgress = mongoose.model('GameProgress', gameProgressSchema);
-
-module.exports = GameProgress;
