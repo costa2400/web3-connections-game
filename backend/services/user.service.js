@@ -28,6 +28,45 @@ const calculateLevelFromXP = (xp) => {
   };
 };
 
+// Award XP to a user
+const awardXP = async (userId, amount) => {
+  try {
+    // For now, just return a mock response
+    // In production, this would update user XP and check for level ups
+    return {
+      xpAwarded: amount,
+      leveledUp: false
+    };
+  } catch (error) {
+    console.error('Award XP error:', error);
+    throw error;
+  }
+};
+
+// Award points to a user
+const awardPoints = async (userId, amount) => {
+  try {
+    // For now, just return success
+    // In production, this would update user points
+    return true;
+  } catch (error) {
+    console.error('Award points error:', error);
+    throw error;
+  }
+};
+
+// Check user achievements
+const checkAchievements = async (userId) => {
+  try {
+    // For now, just return success
+    // In production, this would check and award achievements
+    return true;
+  } catch (error) {
+    console.error('Check achievements error:', error);
+    throw error;
+  }
+};
+
 // Calculate player level and XP from game progress
 const getPlayerProgression = async (playerIdentifier) => {
   try {
@@ -81,45 +120,7 @@ const getPlayerProgression = async (playerIdentifier) => {
   }
 };
 
-// Award XP to a user
-const awardXP = async (userId, amount) => {
-  try {
-    // For now, just return a mock response
-    // In production, this would update user XP and check for level ups
-    return {
-      xpAwarded: amount,
-      leveledUp: false
-    };
-  } catch (error) {
-    console.error('Award XP error:', error);
-    throw error;
-  }
-};
-
-// Award points to a user
-const awardPoints = async (userId, amount) => {
-  try {
-    // For now, just return success
-    // In production, this would update user points
-    return true;
-  } catch (error) {
-    console.error('Award points error:', error);
-    throw error;
-  }
-};
-
-// Check user achievements
-const checkAchievements = async (userId) => {
-  try {
-    // For now, just return success
-    // In production, this would check and award achievements
-    return true;
-  } catch (error) {
-    console.error('Check achievements error:', error);
-    throw error;
-  }
-};
-
+// Export all functions
 module.exports = {
   calculateLevelFromXP,
   getPlayerProgression,
