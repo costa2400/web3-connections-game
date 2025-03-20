@@ -12,6 +12,10 @@ import {
   TabList,
   Tab,
   Heading,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatGroup,
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 
@@ -176,27 +180,35 @@ const Game = () => {
         colorScheme="blue" 
         onChange={(index) => setGameMode(index === 0 ? 'daily' : 'practice')}
         defaultIndex={0}
+        w="full"
+        maxW="800px"
       >
-        <TabList>
-          <Tab>Daily Challenge</Tab>
-          <Tab>Practice</Tab>
+        <TabList justifyContent="center">
+          <Tab fontSize="lg" fontWeight="bold">Daily Challenge</Tab>
+          <Tab fontSize="lg" fontWeight="bold">Practice</Tab>
         </TabList>
       </Tabs>
 
       {game.isDaily && (
-        <Text color="gray.400" fontSize="md">
+        <Text color="gray.400" fontSize="lg" fontWeight="medium">
           {formatDate(game.date)}
         </Text>
       )}
 
-      <HStack spacing={4} justify="space-between" w="full" maxW="800px">
-        <Badge colorScheme="blue" fontSize="lg" p={2}>
-          Score: {score}
-        </Badge>
-        <Badge colorScheme="purple" fontSize="lg" p={2}>
-          Streak: {streak}
-        </Badge>
-      </HStack>
+      <StatGroup w="full" maxW="800px" bg="whiteAlpha.100" p={4} borderRadius="xl">
+        <Stat>
+          <StatLabel fontSize="md">Score</StatLabel>
+          <StatNumber fontSize="2xl" color="blue.400">{score}</StatNumber>
+        </Stat>
+        <Stat>
+          <StatLabel fontSize="md">Streak</StatLabel>
+          <StatNumber fontSize="2xl" color="purple.400">{streak}</StatNumber>
+        </Stat>
+        <Stat>
+          <StatLabel fontSize="md">Groups Found</StatLabel>
+          <StatNumber fontSize="2xl" color="green.400">{solvedGroups.length}/4</StatNumber>
+        </Stat>
+      </StatGroup>
 
       <Grid
         templateColumns="repeat(4, 1fr)"
@@ -204,28 +216,57 @@ const Game = () => {
         w="full"
         maxW="800px"
       >
-        {game.groups.flat().map((word, index) => (
-          <MotionButton
-            key={index}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleWordSelect(word)}
-            isDisabled={solvedGroups.includes(Math.floor(index / 4)) || isCompleted}
-            bg={selectedWords.includes(word) ? 'blue.500' : 'gray.700'}
-            color="white"
-            _hover={{
-              bg: selectedWords.includes(word) ? 'blue.600' : 'gray.600',
-            }}
-            h="100px"
-            fontSize="lg"
-            borderRadius="xl"
-            border="1px solid"
-            borderColor="whiteAlpha.200"
-            backdropFilter="blur(10px)"
-          >
-            {word}
-          </MotionButton>
-        ))}
+        {game.groups.flat().map((word, index) => {
+          const groupIndex = Math.floor(index / 4);
+          const isGroupSolved = solvedGroups.includes(groupIndex);
+          return (
+            <MotionButton
+              key={index}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleWordSelect(word)}
+              isDisabled={isGroupSolved || isCompleted}
+              bg={
+                isGroupSolved
+                  ? game.groupColors[groupIndex]
+                  : selectedWords.includes(word)
+                  ? 'blue.500'
+                  : 'gray.700'
+              }
+              color="white"
+              _hover={{
+                bg: isGroupSolved
+                  ? game.groupColors[groupIndex]
+                  : selectedWords.includes(word)
+                  ? 'blue.600'
+                  : 'gray.600',
+              }}
+              h="100px"
+              fontSize="lg"
+              fontWeight="bold"
+              borderRadius="xl"
+              border="1px solid"
+              borderColor="whiteAlpha.200"
+              backdropFilter="blur(10px)"
+              position="relative"
+              overflow="visible"
+            >
+              {word}
+              {isGroupSolved && (
+                <Badge
+                  position="absolute"
+                  top="-2"
+                  right="-2"
+                  colorScheme="green"
+                  borderRadius="full"
+                  px={2}
+                >
+                  {game.groupNames[groupIndex]}
+                </Badge>
+              )}
+            </MotionButton>
+          );
+        })}
       </Grid>
 
       <HStack spacing={4}>
@@ -234,6 +275,9 @@ const Game = () => {
           onClick={submitGuess}
           isDisabled={selectedWords.length !== 4 || isCompleted}
           size="lg"
+          w="200px"
+          h="60px"
+          fontSize="xl"
         >
           Submit Guess
         </Button>
@@ -241,15 +285,34 @@ const Game = () => {
           colorScheme="purple"
           onClick={startNewGame}
           size="lg"
+          w="200px"
+          h="60px"
+          fontSize="xl"
         >
           {gameMode === 'daily' ? 'Reset Daily' : 'New Game'}
         </Button>
       </HStack>
 
       {isCompleted && (
-        <Badge colorScheme="green" fontSize="xl" p={3}>
-          Game Completed! {gameMode === 'practice' ? 'Try another game!' : 'Come back tomorrow for a new challenge!'}
-        </Badge>
+        <Box
+          bg="green.500"
+          color="white"
+          p={6}
+          borderRadius="xl"
+          textAlign="center"
+          w="full"
+          maxW="800px"
+        >
+          <Heading size="lg" mb={2}>🎉 Game Completed! 🎉</Heading>
+          <Text fontSize="xl">
+            {gameMode === 'practice' 
+              ? 'Great job! Try another game to improve your skills!'
+              : 'Excellent work! Come back tomorrow for a new daily challenge!'}
+          </Text>
+          <Text fontSize="lg" mt={2} color="whiteAlpha.800">
+            Final Score: {score} | Best Streak: {streak}
+          </Text>
+        </Box>
       )}
     </VStack>
   );
