@@ -4,33 +4,82 @@ const GameProgress = require('../models/gameProgress.model');
 const User = require('../models/user.model');
 const userService = require('../services/user.service');
 
-// Get a new game
+// Get a new practice game
 exports.getNewGame = async (req, res) => {
   try {
     // Use user ID if authenticated, otherwise use header or 'anonymous'
     const playerIdentifier = req.userId || req.headers['x-player-id'] || 'anonymous';
     
-    // Create a new game
-    const newGame = await Game.createNewGame();
+    // Create a new practice game
+    const newGame = await Game.createNewGame(false);
     
     // Initialize game progress
     await GameProgress.create({
       playerIdentifier,
-      gameId: newGame._id
+      gameId: newGame._id,
+      isDaily: false
     });
     
     res.status(201).json({
-      message: 'New game created successfully',
+      message: 'New practice game created successfully',
       game: {
         id: newGame._id,
         groups: newGame.groups, 
         groupNames: newGame.groupNames,
-        groupColors: newGame.groupColors
+        groupColors: newGame.groupColors,
+        isDaily: false
       }
     });
   } catch (error) {
     console.error('Create game error:', error);
     res.status(500).json({ message: 'Server error while creating new game' });
+  }
+};
+
+// Get daily challenge
+exports.getDailyChallenge = async (req, res) => {
+  try {
+    const playerIdentifier = req.userId || req.headers['x-player-id'] || 'anonymous';
+    
+    // Get or create today's daily challenge
+    const dailyGame = await Game.getDailyChallenge();
+    
+    // Check if the player has already started this daily challenge
+    let progress = await GameProgress.findOne({
+      playerIdentifier,
+      gameId: dailyGame._id
+    });
+    
+    // If not, create progress entry
+    if (!progress) {
+      progress = await GameProgress.create({
+        playerIdentifier,
+        gameId: dailyGame._id,
+        isDaily: true
+      });
+    }
+    
+    res.status(200).json({
+      message: 'Daily challenge retrieved successfully',
+      game: {
+        id: dailyGame._id,
+        groups: dailyGame.groups,
+        groupNames: dailyGame.groupNames,
+        groupColors: dailyGame.groupColors,
+        isDaily: true,
+        date: dailyGame.dailyDate
+      },
+      progress: {
+        solvedGroups: progress.solvedGroups,
+        attempts: progress.attempts,
+        isCompleted: progress.isCompleted,
+        points: progress.points,
+        streak: progress.streak
+      }
+    });
+  } catch (error) {
+    console.error('Get daily challenge error:', error);
+    res.status(500).json({ message: 'Server error while retrieving daily challenge' });
   }
 };
 
@@ -55,7 +104,8 @@ exports.submitGuess = async (req, res) => {
     if (!progress) {
       progress = await GameProgress.create({
         playerIdentifier,
-        gameId
+        gameId,
+        isDaily: game.isDaily
       });
     }
     
@@ -160,6 +210,7 @@ exports.submitGuess = async (req, res) => {
         streak: progress.streak,
         solvedGroups: progress.solvedGroups,
         isCompleted: progress.isCompleted,
+        isDaily: game.isDaily,
         xpAwarded,
         levelUp
       });
@@ -219,70 +270,5 @@ exports.getGameStats = async (req, res) => {
   } catch (error) {
     console.error('Get game stats error:', error);
     res.status(500).json({ message: 'Server error while retrieving game stats' });
-  }
-};
-
-// Get daily challenge
-exports.getDailyChallenge = async (req, res) => {
-  try {
-    // Use today's date to get or create a daily challenge
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Check if a daily challenge already exists for today
-    let dailyChallenge = await Game.findOne({
-      isDaily: true,
-      dailyDate: {
-        $gte: today,
-        $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
-      }
-    });
-    
-    // If no daily challenge exists, create one
-    if (!dailyChallenge) {
-      // Create a new game with the daily flag
-      dailyChallenge = await Game.createNewGame();
-      dailyChallenge.isDaily = true;
-      dailyChallenge.dailyDate = today;
-      await dailyChallenge.save();
-    }
-    
-    // Use user ID if authenticated, otherwise use header or 'anonymous'
-    const playerIdentifier = req.userId || req.headers['x-player-id'] || 'anonymous';
-    
-    // Check if the player has already started this daily challenge
-    let progress = await GameProgress.findOne({
-      playerIdentifier,
-      gameId: dailyChallenge._id
-    });
-    
-    // If not, create progress entry
-    if (!progress) {
-      progress = await GameProgress.create({
-        playerIdentifier,
-        gameId: dailyChallenge._id,
-        isDaily: true
-      });
-    }
-    
-    res.status(200).json({
-      message: 'Daily challenge retrieved successfully',
-      game: {
-        id: dailyChallenge._id,
-        groups: dailyChallenge.groups,
-        groupNames: dailyChallenge.groupNames,
-        groupColors: dailyChallenge.groupColors,
-        isDaily: true,
-        date: dailyChallenge.dailyDate
-      },
-      progress: {
-        solvedGroups: progress.solvedGroups,
-        attempts: progress.attempts,
-        isCompleted: progress.isCompleted
-      }
-    });
-  } catch (error) {
-    console.error('Get daily challenge error:', error);
-    res.status(500).json({ message: 'Server error while retrieving daily challenge' });
   }
 };

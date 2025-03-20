@@ -27,7 +27,7 @@ const Game = () => {
 
   const startNewGame = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/games/new');
+      const response = await fetch('http://localhost:3003/api/games/new');
       const data = await response.json();
       setGame(data.game);
       setSelectedWords([]);
@@ -74,7 +74,7 @@ const Game = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3002/api/games/guess', {
+      const response = await fetch('http://localhost:3003/api/games/guess', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
