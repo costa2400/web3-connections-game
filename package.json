@@ -2,12 +2,13 @@
   "name": "web3-connections-game",
   "version": "1.0.0",
   "description": "A Web3-themed connections game with Cosmos wallet integration",
-  "main": "index.js",
+  "main": "index.js", 
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
     "test": "node backend/tests/api.test.js",
-    "init-rewards": "node -e \"require('./backend/controllers/reward.controller').createInitialRewards({}, {status: (code) => ({json: (data) => console.log(data)})})\""
+    "test:simple": "node backend/tests/simplified-api.test.js",
+    "init-rewards": "node scripts/init-rewards.js"
   },
   "repository": {
     "type": "git",
