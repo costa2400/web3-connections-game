@@ -8,6 +8,10 @@ import {
   HStack,
   useToast,
   Badge,
+  Tabs,
+  TabList,
+  Tab,
+  Heading,
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 
@@ -19,25 +23,34 @@ const Game = () => {
   const [solvedGroups, setSolvedGroups] = useState([]);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [gameMode, setGameMode] = useState('daily'); // 'daily' or 'practice'
+  const [isCompleted, setIsCompleted] = useState(false);
   const toast = useToast();
 
-  useEffect(() => {
-    startNewGame();
-  }, []);
-
-  const startNewGame = async () => {
+  const loadGame = async (mode) => {
     try {
-      const response = await fetch('http://localhost:3003/api/games/new');
+      const endpoint = mode === 'daily' ? '/daily' : '/new';
+      const response = await fetch(`http://localhost:3003/api/games${endpoint}`);
       const data = await response.json();
       setGame(data.game);
-      setSelectedWords([]);
-      setSolvedGroups([]);
-      setScore(0);
-      setStreak(0);
+      
+      // Set initial progress for daily challenges
+      if (mode === 'daily' && data.progress) {
+        setSolvedGroups(data.progress.solvedGroups || []);
+        setScore(data.progress.points || 0);
+        setStreak(data.progress.streak || 0);
+        setIsCompleted(data.progress.isCompleted || false);
+      } else {
+        setSelectedWords([]);
+        setSolvedGroups([]);
+        setScore(0);
+        setStreak(0);
+        setIsCompleted(false);
+      }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to start new game',
+        description: `Failed to load ${mode} game`,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -45,7 +58,13 @@ const Game = () => {
     }
   };
 
+  useEffect(() => {
+    loadGame(gameMode);
+  }, [gameMode]);
+
   const handleWordSelect = (word) => {
+    if (isCompleted) return;
+    
     if (selectedWords.includes(word)) {
       setSelectedWords(selectedWords.filter(w => w !== word));
     } else if (selectedWords.length < 4) {
@@ -102,9 +121,10 @@ const Game = () => {
         });
 
         if (data.isCompleted) {
+          setIsCompleted(true);
           toast({
             title: 'Congratulations!',
-            description: 'You completed the game!',
+            description: `You completed the ${gameMode} game!`,
             status: 'success',
             duration: 5000,
             isClosable: true,
@@ -132,11 +152,44 @@ const Game = () => {
     }
   };
 
+  const startNewGame = () => {
+    if (gameMode === 'daily') {
+      // For daily mode, just reload the current daily challenge
+      loadGame('daily');
+    } else {
+      // For practice mode, get a new random game
+      loadGame('practice');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
   if (!game) return null;
 
   return (
     <VStack spacing={6} w="full">
-      <HStack spacing={4} justify="space-between" w="full">
+      <Tabs 
+        variant="soft-rounded" 
+        colorScheme="blue" 
+        onChange={(index) => setGameMode(index === 0 ? 'daily' : 'practice')}
+        defaultIndex={0}
+      >
+        <TabList>
+          <Tab>Daily Challenge</Tab>
+          <Tab>Practice</Tab>
+        </TabList>
+      </Tabs>
+
+      {game.isDaily && (
+        <Text color="gray.400" fontSize="md">
+          {formatDate(game.date)}
+        </Text>
+      )}
+
+      <HStack spacing={4} justify="space-between" w="full" maxW="800px">
         <Badge colorScheme="blue" fontSize="lg" p={2}>
           Score: {score}
         </Badge>
@@ -157,7 +210,7 @@ const Game = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleWordSelect(word)}
-            isDisabled={solvedGroups.includes(Math.floor(index / 4))}
+            isDisabled={solvedGroups.includes(Math.floor(index / 4)) || isCompleted}
             bg={selectedWords.includes(word) ? 'blue.500' : 'gray.700'}
             color="white"
             _hover={{
@@ -179,7 +232,7 @@ const Game = () => {
         <Button
           colorScheme="blue"
           onClick={submitGuess}
-          isDisabled={selectedWords.length !== 4}
+          isDisabled={selectedWords.length !== 4 || isCompleted}
           size="lg"
         >
           Submit Guess
@@ -189,9 +242,15 @@ const Game = () => {
           onClick={startNewGame}
           size="lg"
         >
-          New Game
+          {gameMode === 'daily' ? 'Reset Daily' : 'New Game'}
         </Button>
       </HStack>
+
+      {isCompleted && (
+        <Badge colorScheme="green" fontSize="xl" p={3}>
+          Game Completed! {gameMode === 'practice' ? 'Try another game!' : 'Come back tomorrow for a new challenge!'}
+        </Badge>
+      )}
     </VStack>
   );
 };
