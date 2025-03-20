@@ -141,21 +141,41 @@ const wordDatabase = {
     // Take the first 4 categories
     const dailyCategories = shuffledCategories.slice(0, 4);
     
-    // For each category, shuffle its words and take the first 4
     const gameData = {
       groups: [],
       groupNames: [],
-      groupColors: []
+      groupColors: [],
+      flatWords: [] // Will store all words in a single array
     };
 
-    dailyCategories.forEach(categoryKey => {
+    // First, collect all selected words and their metadata
+    const allWords = [];
+    dailyCategories.forEach((categoryKey, groupIndex) => {
       const category = this.categories[categoryKey];
       const shuffledWords = this.shuffleArray(category.words, seed + categoryKey.length);
+      const selectedWords = shuffledWords.slice(0, 4);
       
-      gameData.groups.push(shuffledWords.slice(0, 4));
+      gameData.groups.push(selectedWords);
       gameData.groupNames.push(category.name);
       gameData.groupColors.push(category.color);
+      
+      // Add words with their group index
+      selectedWords.forEach(word => {
+        allWords.push({
+          word,
+          groupIndex
+        });
+      });
     });
+
+    // Shuffle all words together
+    const shuffledAllWords = this.shuffleArray(allWords, seed + 123);
+    
+    // Create the flat grid
+    gameData.flatWords = shuffledAllWords.map(item => ({
+      word: item.word,
+      groupIndex: item.groupIndex
+    }));
 
     return gameData;
   }
