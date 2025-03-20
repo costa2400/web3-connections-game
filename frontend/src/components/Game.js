@@ -216,28 +216,27 @@ const Game = () => {
         w="full"
         maxW="800px"
       >
-        {game.groups.flat().map((word, index) => {
-          const groupIndex = Math.floor(index / 4);
-          const isGroupSolved = solvedGroups.includes(groupIndex);
+        {game.flatWords.map((item, index) => {
+          const isGroupSolved = solvedGroups.includes(item.groupIndex);
           return (
             <MotionButton
               key={index}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => handleWordSelect(word)}
+              onClick={() => handleWordSelect(item.word)}
               isDisabled={isGroupSolved || isCompleted}
               bg={
                 isGroupSolved
-                  ? game.groupColors[groupIndex]
-                  : selectedWords.includes(word)
+                  ? game.groupColors[item.groupIndex]
+                  : selectedWords.includes(item.word)
                   ? 'blue.500'
                   : 'gray.700'
               }
               color="white"
               _hover={{
                 bg: isGroupSolved
-                  ? game.groupColors[groupIndex]
-                  : selectedWords.includes(word)
+                  ? game.groupColors[item.groupIndex]
+                  : selectedWords.includes(item.word)
                   ? 'blue.600'
                   : 'gray.600',
               }}
@@ -251,7 +250,7 @@ const Game = () => {
               position="relative"
               overflow="visible"
             >
-              {word}
+              {item.word}
               {isGroupSolved && (
                 <Badge
                   position="absolute"
@@ -261,7 +260,7 @@ const Game = () => {
                   borderRadius="full"
                   px={2}
                 >
-                  {game.groupNames[groupIndex]}
+                  {game.groupNames[item.groupIndex]}
                 </Badge>
               )}
             </MotionButton>
