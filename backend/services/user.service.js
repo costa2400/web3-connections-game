@@ -82,7 +82,7 @@ const getPlayerProgression = async (playerIdentifier) => {
 };
 
 // Award XP to a user
-exports.awardXP = async (userId, amount) => {
+const awardXP = async (userId, amount) => {
   try {
     // For now, just return a mock response
     // In production, this would update user XP and check for level ups
@@ -97,7 +97,7 @@ exports.awardXP = async (userId, amount) => {
 };
 
 // Award points to a user
-exports.awardPoints = async (userId, amount) => {
+const awardPoints = async (userId, amount) => {
   try {
     // For now, just return success
     // In production, this would update user points
@@ -109,7 +109,7 @@ exports.awardPoints = async (userId, amount) => {
 };
 
 // Check user achievements
-exports.checkAchievements = async (userId) => {
+const checkAchievements = async (userId) => {
   try {
     // For now, just return success
     // In production, this would check and award achievements
