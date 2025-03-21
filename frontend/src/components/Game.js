@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -20,6 +20,7 @@ import {
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FaHeart } from 'react-icons/fa';
+import { api } from '../services/api';
 
 const MotionButton = motion(Button);
 
@@ -35,14 +36,14 @@ const Game = () => {
   const [isEliminated, setIsEliminated] = useState(false);
   const toast = useToast();
 
-  const loadGame = async (mode) => {
+  const loadGame = useCallback(async (mode) => {
     try {
-      const endpoint = mode === 'daily' ? '/daily' : '/new';
-      const response = await fetch(`http://localhost:3003/api/games${endpoint}`);
-      const data = await response.json();
+      const data = mode === 'daily' 
+        ? await api.getDailyChallenge()
+        : await api.getNewGame();
+      
       setGame(data.game);
       
-      // Set initial progress for daily challenges
       if (mode === 'daily' && data.progress) {
         setSolvedGroups(data.progress.solvedGroups || []);
         setScore(data.progress.points || 0);
@@ -68,14 +69,14 @@ const Game = () => {
         isClosable: true,
       });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     loadGame(gameMode);
   }, [gameMode, loadGame]);
 
   const handleWordSelect = (word) => {
-    if (isCompleted) return;
+    if (isCompleted || isEliminated) return;
     
     if (selectedWords.includes(word)) {
       setSelectedWords(selectedWords.filter(w => w !== word));
@@ -105,18 +106,7 @@ const Game = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3003/api/games/guess', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gameId: game.id,
-          selectedWords,
-        }),
-      });
-
-      const data = await response.json();
+      const data = await api.submitGuess(game.id, selectedWords);
 
       if (data.correct) {
         setSolvedGroups([...solvedGroups, data.groupIndex]);
@@ -181,10 +171,8 @@ const Game = () => {
 
   const startNewGame = () => {
     if (gameMode === 'daily') {
-      // For daily mode, just reload the current daily challenge
       loadGame('daily');
     } else {
-      // For practice mode, get a new random game
       loadGame('practice');
     }
   };
