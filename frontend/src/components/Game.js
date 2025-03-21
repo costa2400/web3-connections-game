@@ -17,12 +17,30 @@ import {
   StatNumber,
   StatGroup,
   Icon,
+  Tooltip,
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FaHeart } from 'react-icons/fa';
 import { api } from '../services/api';
 
 const MotionButton = motion(Button);
+
+// Cosmos-themed color scheme (matching Connections style but with space/cosmos feel)
+const DIFFICULTY_COLORS = {
+  EASY: '#FFB347',    // Cosmic orange-yellow
+  MEDIUM: '#7AA874',  // Sage green (keeping this as it works well)
+  HARD: '#85C0F9',    // Celestial blue
+  VERY_HARD: '#9D8CFF' // Cosmic purple
+};
+
+// Add category descriptions
+const CATEGORY_DESCRIPTIONS = {
+  'Layer 1 Blockchains': 'Primary blockchain networks that process and validate transactions',
+  'DeFi Concepts': 'Fundamental concepts in decentralized finance',
+  'Wallet Components': 'Essential elements of blockchain wallets and key management',
+  'NFT Concepts': 'Core concepts in non-fungible token technology',
+  // ... add more categories with descriptions
+};
 
 const Game = () => {
   const [game, setGame] = useState(null);
@@ -34,6 +52,7 @@ const Game = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [lives, setLives] = useState(4);
   const [isEliminated, setIsEliminated] = useState(false);
+  const [showingExplanation, setShowingExplanation] = useState(null);
   const toast = useToast();
 
   const loadGame = useCallback(async (mode) => {
@@ -182,6 +201,19 @@ const Game = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // Add explanation display when a group is solved
+  const handleGroupSolved = (groupIndex) => {
+    const groupName = game.groupNames[groupIndex];
+    setShowingExplanation({
+      name: groupName,
+      description: CATEGORY_DESCRIPTIONS[groupName],
+      color: game.groupColors[groupIndex]
+    });
+    
+    // Hide explanation after 5 seconds
+    setTimeout(() => setShowingExplanation(null), 5000);
+  };
+
   if (!game) return null;
 
   return (
@@ -235,6 +267,31 @@ const Game = () => {
         </Stat>
       </StatGroup>
 
+      {/* Category explanation popup */}
+      {showingExplanation && (
+        <Box
+          position="fixed"
+          top="20%"
+          left="50%"
+          transform="translateX(-50%)"
+          bg={showingExplanation.color}
+          color="white"
+          p={4}
+          borderRadius="xl"
+          boxShadow="lg"
+          maxW="600px"
+          zIndex={1000}
+          textAlign="center"
+        >
+          <Text fontSize="xl" fontWeight="bold" mb={2}>
+            {showingExplanation.name}
+          </Text>
+          <Text fontSize="md">
+            {showingExplanation.description}
+          </Text>
+        </Box>
+      )}
+
       <Grid
         templateColumns="repeat(4, 1fr)"
         gap={4}
@@ -244,51 +301,43 @@ const Game = () => {
         {game.flatWords.map((item, index) => {
           const isGroupSolved = solvedGroups.includes(item.groupIndex);
           return (
-            <MotionButton
+            <Tooltip
               key={index}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleWordSelect(item.word)}
-              isDisabled={isGroupSolved || isCompleted || isEliminated}
-              bg={
-                isGroupSolved
-                  ? game.groupColors[item.groupIndex]
-                  : selectedWords.includes(item.word)
-                  ? 'blue.500'
-                  : 'gray.700'
-              }
-              color="white"
-              _hover={{
-                bg: isGroupSolved
-                  ? game.groupColors[item.groupIndex]
-                  : selectedWords.includes(item.word)
-                  ? 'blue.600'
-                  : 'gray.600',
-              }}
-              h="100px"
-              fontSize="lg"
-              fontWeight="bold"
-              borderRadius="xl"
-              border="1px solid"
-              borderColor="whiteAlpha.200"
-              backdropFilter="blur(10px)"
-              position="relative"
-              overflow="visible"
+              label={isGroupSolved ? game.groupNames[item.groupIndex] : ""}
+              isDisabled={!isGroupSolved}
             >
-              {item.word}
-              {isGroupSolved && (
-                <Badge
-                  position="absolute"
-                  top="-2"
-                  right="-2"
-                  colorScheme="green"
-                  borderRadius="full"
-                  px={2}
-                >
-                  {game.groupNames[item.groupIndex]}
-                </Badge>
-              )}
-            </MotionButton>
+              <MotionButton
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleWordSelect(item.word)}
+                isDisabled={isGroupSolved || isCompleted || isEliminated}
+                bg={
+                  isGroupSolved
+                    ? DIFFICULTY_COLORS[getDifficultyLevel(item.groupIndex)]
+                    : selectedWords.includes(item.word)
+                    ? 'blue.500'
+                    : 'gray.700'
+                }
+                color="white"
+                _hover={{
+                  bg: isGroupSolved
+                    ? DIFFICULTY_COLORS[getDifficultyLevel(item.groupIndex)]
+                    : selectedWords.includes(item.word)
+                    ? 'blue.600'
+                    : 'gray.600',
+                }}
+                h="100px"
+                fontSize="lg"
+                fontWeight="bold"
+                borderRadius="xl"
+                border="1px solid"
+                borderColor="whiteAlpha.200"
+                backdropFilter="blur(10px)"
+                position="relative"
+              >
+                {item.word}
+              </MotionButton>
+            </Tooltip>
           );
         })}
       </Grid>
