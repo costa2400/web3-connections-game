@@ -72,7 +72,7 @@ const Game = () => {
 
   useEffect(() => {
     loadGame(gameMode);
-  }, [gameMode]);
+  }, [gameMode, loadGame]);
 
   const handleWordSelect = (word) => {
     if (isCompleted) return;
