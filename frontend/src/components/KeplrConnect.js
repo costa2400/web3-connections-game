@@ -19,6 +19,7 @@ const KeplrConnect = ({ onConnect }) => {
           
           if (accounts.length > 0) {
             setAddress(accounts[0].address);
+            // Just silently connect without showing a notification
             onConnect(accounts[0].address, offlineSigner);
           }
         } catch (error) {
@@ -55,15 +56,8 @@ const KeplrConnect = ({ onConnect }) => {
       
       if (accounts.length > 0) {
         setAddress(accounts[0].address);
+        // Let the parent component handle the toast notification
         onConnect(accounts[0].address, offlineSigner);
-        
-        toast({
-          title: "Wallet connected",
-          description: "Your Keplr wallet has been connected successfully!",
-          status: "success",
-          duration: 3000,
-          isClosable: true
-        });
       }
     } catch (error) {
       console.error("Error connecting to Keplr:", error);
