@@ -35,7 +35,15 @@ const gameProgressSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  lives: {
+    type: Number,
+    default: 4
+  },
   isCompleted: {
+    type: Boolean,
+    default: false
+  },
+  isEliminated: {
     type: Boolean,
     default: false
   },

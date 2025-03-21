@@ -27,7 +27,12 @@ exports.getNewGame = async (req, res) => {
         groups: newGame.groups, 
         groupNames: newGame.groupNames,
         groupColors: newGame.groupColors,
+        flatWords: newGame.flatWords,
         isDaily: false
+      },
+      progress: {
+        lives: 4,
+        isEliminated: false
       }
     });
   } catch (error) {
@@ -66,6 +71,7 @@ exports.getDailyChallenge = async (req, res) => {
         groups: dailyGame.groups,
         groupNames: dailyGame.groupNames,
         groupColors: dailyGame.groupColors,
+        flatWords: dailyGame.flatWords,
         isDaily: true,
         date: dailyGame.dailyDate
       },
@@ -74,7 +80,9 @@ exports.getDailyChallenge = async (req, res) => {
         attempts: progress.attempts,
         isCompleted: progress.isCompleted,
         points: progress.points,
-        streak: progress.streak
+        streak: progress.streak,
+        lives: progress.lives,
+        isEliminated: progress.isEliminated
       }
     });
   } catch (error) {
@@ -112,6 +120,11 @@ exports.submitGuess = async (req, res) => {
     // Check if game is already completed
     if (progress.isCompleted) {
       return res.status(400).json({ message: 'Game is already completed' });
+    }
+    
+    // Check if player is eliminated
+    if (progress.isEliminated) {
+      return res.status(400).json({ message: 'Game over - no lives remaining' });
     }
     
     // Increment attempts
@@ -211,17 +224,29 @@ exports.submitGuess = async (req, res) => {
         solvedGroups: progress.solvedGroups,
         isCompleted: progress.isCompleted,
         isDaily: game.isDaily,
+        lives: progress.lives,
+        isEliminated: progress.isEliminated,
         xpAwarded,
         levelUp
       });
     } else {
-      // Incorrect guess
+      // Incorrect guess - reduce lives
       progress.streak = 0;
+      progress.lives -= 1;
+      
+      // Check if player is eliminated
+      if (progress.lives <= 0) {
+        progress.isEliminated = true;
+        progress.lives = 0;
+      }
+      
       await progress.save();
       
       res.status(200).json({
         correct: false,
-        solvedGroups: progress.solvedGroups
+        solvedGroups: progress.solvedGroups,
+        lives: progress.lives,
+        isEliminated: progress.isEliminated
       });
     }
   } catch (error) {

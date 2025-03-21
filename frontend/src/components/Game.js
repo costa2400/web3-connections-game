@@ -16,8 +16,10 @@ import {
   StatLabel,
   StatNumber,
   StatGroup,
+  Icon,
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
+import { FaHeart } from 'react-icons/fa';
 
 const MotionButton = motion(Button);
 
@@ -29,6 +31,8 @@ const Game = () => {
   const [streak, setStreak] = useState(0);
   const [gameMode, setGameMode] = useState('daily'); // 'daily' or 'practice'
   const [isCompleted, setIsCompleted] = useState(false);
+  const [lives, setLives] = useState(4);
+  const [isEliminated, setIsEliminated] = useState(false);
   const toast = useToast();
 
   const loadGame = async (mode) => {
@@ -44,12 +48,16 @@ const Game = () => {
         setScore(data.progress.points || 0);
         setStreak(data.progress.streak || 0);
         setIsCompleted(data.progress.isCompleted || false);
+        setLives(data.progress.lives);
+        setIsEliminated(data.progress.isEliminated || false);
       } else {
         setSelectedWords([]);
         setSolvedGroups([]);
         setScore(0);
         setStreak(0);
         setIsCompleted(false);
+        setLives(4);
+        setIsEliminated(false);
       }
     } catch (error) {
       toast({
@@ -115,6 +123,8 @@ const Game = () => {
         setScore(data.totalPoints);
         setStreak(data.streak);
         setSelectedWords([]);
+        setLives(data.lives);
+        setIsEliminated(data.isEliminated);
 
         toast({
           title: 'Correct!',
@@ -137,13 +147,26 @@ const Game = () => {
       } else {
         setStreak(0);
         setSelectedWords([]);
-        toast({
-          title: 'Try again',
-          description: 'These words don\'t form a group',
-          status: 'error',
-          duration: 2000,
-          isClosable: true,
-        });
+        setLives(data.lives);
+        setIsEliminated(data.isEliminated);
+
+        if (data.isEliminated) {
+          toast({
+            title: 'Game Over!',
+            description: 'You ran out of lives!',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        } else {
+          toast({
+            title: 'Try again',
+            description: `These words don't form a group. ${data.lives} lives remaining.`,
+            status: 'error',
+            duration: 2000,
+            isClosable: true,
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -208,6 +231,20 @@ const Game = () => {
           <StatLabel fontSize="md">Groups Found</StatLabel>
           <StatNumber fontSize="2xl" color="green.400">{solvedGroups.length}/4</StatNumber>
         </Stat>
+        <Stat>
+          <StatLabel fontSize="md">Lives</StatLabel>
+          <HStack spacing={1}>
+            {[...Array(4)].map((_, i) => (
+              <Icon
+                key={i}
+                as={FaHeart}
+                color={i < lives ? "red.500" : "gray.500"}
+                w={6}
+                h={6}
+              />
+            ))}
+          </HStack>
+        </Stat>
       </StatGroup>
 
       <Grid
@@ -224,7 +261,7 @@ const Game = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => handleWordSelect(item.word)}
-              isDisabled={isGroupSolved || isCompleted}
+              isDisabled={isGroupSolved || isCompleted || isEliminated}
               bg={
                 isGroupSolved
                   ? game.groupColors[item.groupIndex]
@@ -272,7 +309,7 @@ const Game = () => {
         <Button
           colorScheme="blue"
           onClick={submitGuess}
-          isDisabled={selectedWords.length !== 4 || isCompleted}
+          isDisabled={selectedWords.length !== 4 || isCompleted || isEliminated}
           size="lg"
           w="200px"
           h="60px"
@@ -292,9 +329,9 @@ const Game = () => {
         </Button>
       </HStack>
 
-      {isCompleted && (
+      {(isCompleted || isEliminated) && (
         <Box
-          bg="green.500"
+          bg={isCompleted ? "green.500" : "red.500"}
           color="white"
           p={6}
           borderRadius="xl"
@@ -302,11 +339,15 @@ const Game = () => {
           w="full"
           maxW="800px"
         >
-          <Heading size="lg" mb={2}>🎉 Game Completed! 🎉</Heading>
+          <Heading size="lg" mb={2}>
+            {isCompleted ? '🎉 Game Completed! 🎉' : '❌ Game Over! ❌'}
+          </Heading>
           <Text fontSize="xl">
-            {gameMode === 'practice' 
-              ? 'Great job! Try another game to improve your skills!'
-              : 'Excellent work! Come back tomorrow for a new daily challenge!'}
+            {isCompleted
+              ? (gameMode === 'practice' 
+                ? 'Great job! Try another game to improve your skills!'
+                : 'Excellent work! Come back tomorrow for a new daily challenge!')
+              : 'You ran out of lives! Try again with a new game.'}
           </Text>
           <Text fontSize="lg" mt={2} color="whiteAlpha.800">
             Final Score: {score} | Best Streak: {streak}

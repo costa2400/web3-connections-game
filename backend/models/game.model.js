@@ -6,6 +6,10 @@ const gameSchema = new mongoose.Schema({
   groups: [[String]],
   groupNames: [String],
   groupColors: [String],
+  flatWords: [{
+    word: String,
+    groupIndex: Number
+  }],
   isDaily: {
     type: Boolean,
     default: false
