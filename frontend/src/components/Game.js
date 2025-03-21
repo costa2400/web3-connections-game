@@ -25,10 +25,18 @@ import { api } from '../services/api';
 
 const MotionButton = motion(Button);
 
-// Cosmos-themed color scheme (matching Connections style but with space/cosmos feel)
+// Cosmos-themed difficulty levels
+const DIFFICULTY_LEVELS = {
+  0: 'EASY',      // Yellow groups
+  1: 'MEDIUM',    // Green groups
+  2: 'HARD',      // Blue groups
+  3: 'VERY_HARD'  // Purple groups
+};
+
+// Cosmos-themed color scheme
 const DIFFICULTY_COLORS = {
   EASY: '#FFB347',    // Cosmic orange-yellow
-  MEDIUM: '#7AA874',  // Sage green (keeping this as it works well)
+  MEDIUM: '#7AA874',  // Sage green
   HARD: '#85C0F9',    // Celestial blue
   VERY_HARD: '#9D8CFF' // Cosmic purple
 };
@@ -54,6 +62,11 @@ const Game = () => {
   const [isEliminated, setIsEliminated] = useState(false);
   const [showingExplanation, setShowingExplanation] = useState(null);
   const toast = useToast();
+
+  // Get difficulty level for a group
+  const getDifficultyLevel = (groupIndex) => {
+    return DIFFICULTY_LEVELS[groupIndex] || 'EASY';
+  };
 
   const loadGame = useCallback(async (mode) => {
     try {
@@ -134,6 +147,7 @@ const Game = () => {
         setSelectedWords([]);
         setLives(data.lives);
         setIsEliminated(data.isEliminated);
+        handleGroupSolved(data.groupIndex);
 
         toast({
           title: 'Correct!',
@@ -201,13 +215,12 @@ const Game = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  // Add explanation display when a group is solved
   const handleGroupSolved = (groupIndex) => {
     const groupName = game.groupNames[groupIndex];
     setShowingExplanation({
       name: groupName,
       description: CATEGORY_DESCRIPTIONS[groupName],
-      color: game.groupColors[groupIndex]
+      color: DIFFICULTY_COLORS[getDifficultyLevel(groupIndex)]
     });
     
     // Hide explanation after 5 seconds
