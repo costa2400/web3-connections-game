@@ -18,10 +18,13 @@ import {
   StatGroup,
   Icon,
   Tooltip,
+  Divider,
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FaHeart } from 'react-icons/fa';
 import { api } from '../services/api';
+import KeplrConnect from './KeplrConnect';
+import RewardsPanel from './RewardsPanel';
 
 const MotionButton = motion(Button);
 
@@ -61,6 +64,8 @@ const Game = () => {
   const [lives, setLives] = useState(4);
   const [isEliminated, setIsEliminated] = useState(false);
   const [showingExplanation, setShowingExplanation] = useState(null);
+  const [userWallet, setUserWallet] = useState(null);
+  const [showRewards, setShowRewards] = useState(false);
   const toast = useToast();
 
   // Get difficulty level for a group
@@ -68,15 +73,44 @@ const Game = () => {
     return DIFFICULTY_LEVELS[groupIndex] || 'EASY';
   };
 
+  // Handle wallet connection
+  const handleWalletConnect = async (address, signer) => {
+    setUserWallet({ address, signer });
+    
+    // Authenticate with backend using the wallet address
+    try {
+      const response = await api.authenticateWallet(address);
+      if (response.token) {
+        localStorage.setItem('game_auth_token', response.token);
+        
+        toast({
+          title: 'Wallet Connected',
+          description: 'Your Cosmos wallet is now linked to your game progress!',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+        
+        // Load user-specific game data
+        loadGame(gameMode);
+      }
+    } catch (error) {
+      console.error("Authentication error:", error);
+      // Continue as guest if authentication fails
+      loadGame(gameMode);
+    }
+  };
+  
+  // Update loadGame to use wallet address if available
   const loadGame = useCallback(async (mode) => {
     try {
       const data = mode === 'daily' 
-        ? await api.getDailyChallenge()
-        : await api.getNewGame();
+        ? await api.getDailyChallenge(userWallet?.address)
+        : await api.getNewGame(userWallet?.address);
       
       setGame(data.game);
       
-      if (mode === 'daily' && data.progress) {
+      if (data.progress) {
         setSolvedGroups(data.progress.solvedGroups || []);
         setScore(data.progress.points || 0);
         setStreak(data.progress.streak || 0);
@@ -101,7 +135,7 @@ const Game = () => {
         isClosable: true,
       });
     }
-  }, [toast]);
+  }, [toast, userWallet]);
 
   useEffect(() => {
     loadGame(gameMode);
@@ -125,6 +159,7 @@ const Game = () => {
     }
   };
 
+  // Update submitGuess to include wallet address if available
   const submitGuess = async () => {
     if (selectedWords.length !== 4) {
       toast({
@@ -138,7 +173,7 @@ const Game = () => {
     }
 
     try {
-      const data = await api.submitGuess(game.id, selectedWords);
+      const data = await api.submitGuess(game.id, selectedWords, userWallet?.address);
 
       if (data.correct) {
         setSolvedGroups([...solvedGroups, data.groupIndex]);
@@ -227,10 +262,49 @@ const Game = () => {
     setTimeout(() => setShowingExplanation(null), 5000);
   };
 
+  // Toggle rewards panel
+  const toggleRewards = () => {
+    setShowRewards(!showRewards);
+  };
+
   if (!game) return null;
 
   return (
     <VStack spacing={6} w="full">
+      <Heading fontSize="2xl" color="teal.300" mb={2}>
+        Web3 Connections
+      </Heading>
+      
+      {/* Wallet and rewards section */}
+      <HStack spacing={4} w="full" maxW="800px" justify="space-between">
+        <KeplrConnect onConnect={handleWalletConnect} />
+        
+        {userWallet && (
+          <Button
+            size="sm"
+            colorScheme="teal"
+            variant="outline"
+            onClick={toggleRewards}
+          >
+            {showRewards ? 'Hide Rewards' : 'Show Rewards'}
+          </Button>
+        )}
+      </HStack>
+      
+      {/* Show rewards panel if toggled */}
+      {showRewards && userWallet && (
+        <RewardsPanel 
+          walletAddress={userWallet.address} 
+          gameProgress={{
+            score,
+            streak,
+            solvedGroups: solvedGroups.length,
+            isCompleted
+          }}
+        />
+      )}
+      
+      {/* Rest of the existing game UI */}
       <Tabs 
         variant="soft-rounded" 
         colorScheme="blue" 

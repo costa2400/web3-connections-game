@@ -25,6 +25,15 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true
   },
+  isWalletUser: {
+    type: Boolean,
+    default: false
+  },
+  rewardBalance: {
+    type: String,
+    default: '0'
+  },
+  claimedRewards: [String],
   authType: {
     type: String,
     enum: ['email', 'wallet'],

@@ -38,6 +38,9 @@ router.post(
   authController.connectWallet
 );
 
+// Add wallet authentication route
+router.post('/wallet', authController.authenticateWallet);
+
 // Get current user profile
 router.get('/profile', authMiddleware, authController.getProfile);
 

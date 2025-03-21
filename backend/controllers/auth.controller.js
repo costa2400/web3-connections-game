@@ -174,3 +174,45 @@ exports.getProfile = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching profile' });
   }
 };
+
+// Authenticate using Keplr wallet
+exports.authenticateWallet = async (req, res) => {
+  try {
+    const { address } = req.body;
+    
+    if (!address) {
+      return res.status(400).json({ message: 'Wallet address is required' });
+    }
+    
+    // Find or create user with this wallet address
+    let user = await User.findOne({ walletAddress: address });
+    
+    if (!user) {
+      user = await User.create({
+        walletAddress: address,
+        username: `cosmos${Math.floor(Math.random() * 10000)}`, // Generate random username
+        isWalletUser: true
+      });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, walletAddress: address },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRATION }
+    );
+    
+    res.status(200).json({
+      message: 'Authentication successful',
+      token,
+      user: {
+        id: user._id,
+        walletAddress: address,
+        username: user.username
+      }
+    });
+  } catch (error) {
+    console.error('Wallet authentication error:', error);
+    res.status(500).json({ message: 'Server error during authentication' });
+  }
+};

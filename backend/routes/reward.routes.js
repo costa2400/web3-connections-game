@@ -11,4 +11,10 @@ router.get('/:id', rewardController.getRewardById);
 // Create initial rewards (for development/setup)
 router.post('/init', rewardController.createInitialRewards);
 
+// Get user rewards
+router.get('/user', rewardController.getUserRewards);
+
+// Claim reward
+router.post('/claim', rewardController.claimReward);
+
 module.exports = router;
