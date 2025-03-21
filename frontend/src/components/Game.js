@@ -77,7 +77,7 @@ const Game = () => {
   // Handle wallet connection
   const handleWalletConnect = async (address, signer) => {
     // Prevent multiple simultaneous connection attempts
-    if (isConnecting) return;
+    if (isConnecting || userWallet?.address === address) return;
     
     try {
       setIsConnecting(true);
@@ -88,15 +88,21 @@ const Game = () => {
       if (response.token) {
         localStorage.setItem('game_auth_token', response.token);
         
-        toast({
-          title: 'Wallet Connected',
-          description: 'Your Cosmos wallet is now linked to your game progress!',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        // Only show toast if this is a new authentication
+        if (!response.alreadyAuthenticated) {
+          toast({
+            title: 'Wallet Connected',
+            description: 'Your Cosmos wallet is now linked to your game progress!',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
         
         // Load user-specific game data
+        loadGame(gameMode);
+      } else if (response.alreadyAuthenticated) {
+        // Already authenticated, just load game data
         loadGame(gameMode);
       }
     } catch (error) {

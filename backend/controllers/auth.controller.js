@@ -184,15 +184,46 @@ exports.authenticateWallet = async (req, res) => {
       return res.status(400).json({ message: 'Wallet address is required' });
     }
     
+    // Store recent successful authentications to prevent rapid repeated calls
+    if (!global.recentAuthWallets) {
+      global.recentAuthWallets = new Map();
+    }
+    
+    // Check if this wallet was recently authenticated (within last 5 seconds)
+    const now = Date.now();
+    const lastAuth = global.recentAuthWallets.get(address);
+    
+    if (lastAuth && (now - lastAuth < 5000)) {
+      // Return success without logging or database operations
+      return res.status(200).json({
+        message: 'Already authenticated',
+        alreadyAuthenticated: true
+      });
+    }
+    
     // Find or create user with this wallet address
     let user = await User.findOne({ walletAddress: address });
     
     if (!user) {
-      user = await User.create({
-        walletAddress: address,
-        username: `cosmos${Math.floor(Math.random() * 10000)}`, // Generate random username
-        isWalletUser: true
-      });
+      // Only attempt to create if user doesn't exist
+      try {
+        user = await User.create({
+          walletAddress: address,
+          username: `cosmos${Math.floor(Math.random() * 10000)}`, // Generate random username
+          isWalletUser: true
+        });
+      } catch (createError) {
+        // If creation fails due to race condition (another request created the user)
+        if (createError.code === 11000) {
+          user = await User.findOne({ walletAddress: address });
+          // If still can't find, then something else is wrong
+          if (!user) {
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
+      }
     }
     
     // Generate JWT token
@@ -201,6 +232,9 @@ exports.authenticateWallet = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRATION }
     );
+    
+    // Store the authentication time
+    global.recentAuthWallets.set(address, now);
     
     res.status(200).json({
       message: 'Authentication successful',
@@ -212,7 +246,10 @@ exports.authenticateWallet = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Wallet authentication error:', error);
+    // Only log full error for non-duplicate key errors
+    if (!error.code || error.code !== 11000) {
+      console.error('Wallet authentication error:', error);
+    }
     res.status(500).json({ message: 'Server error during authentication' });
   }
 };
