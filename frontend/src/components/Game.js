@@ -66,6 +66,7 @@ const Game = () => {
   const [showingExplanation, setShowingExplanation] = useState(null);
   const [userWallet, setUserWallet] = useState(null);
   const [showRewards, setShowRewards] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const toast = useToast();
 
   // Get difficulty level for a group
@@ -75,10 +76,14 @@ const Game = () => {
 
   // Handle wallet connection
   const handleWalletConnect = async (address, signer) => {
-    setUserWallet({ address, signer });
+    // Prevent multiple simultaneous connection attempts
+    if (isConnecting) return;
     
-    // Authenticate with backend using the wallet address
     try {
+      setIsConnecting(true);
+      setUserWallet({ address, signer });
+      
+      // Authenticate with backend using the wallet address
       const response = await api.authenticateWallet(address);
       if (response.token) {
         localStorage.setItem('game_auth_token', response.token);
@@ -96,8 +101,20 @@ const Game = () => {
       }
     } catch (error) {
       console.error("Authentication error:", error);
+      // Only show error toast if it's not a duplicate key error
+      if (!error.message?.includes('duplicate key')) {
+        toast({
+          title: 'Authentication Notice',
+          description: 'Continuing as guest with your connected wallet',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       // Continue as guest if authentication fails
       loadGame(gameMode);
+    } finally {
+      setIsConnecting(false);
     }
   };
   
